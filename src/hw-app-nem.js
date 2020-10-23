@@ -22,7 +22,44 @@ export default class Nem {
 
     constructor(transport, scrambleKey = "NEM") {
         this.transport = transport;
-        transport.decorateAppAPIMethods(this, ["getAddress", "signTransaction", "getAppConfiguration"], scrambleKey);
+        transport.decorateAppAPIMethods(this,
+            ["getAppVersion", "getAddress", "signTransaction"],
+            scrambleKey);
+    }
+
+    /**
+     * get the version of the NEM app installed on the hardware device
+     *
+     * @return an object with a version
+     * @example
+     * const result = await nem.getAppVersion();
+     *
+     * {
+     *   "majorVersion": "0",
+     *   "minorVersion": "0",
+     *   "patchVersion": "2"
+     * }
+     */
+    async getAppVersion() {
+        // APDU fields configuration
+        const apdu = {
+            cla: 0xe0,
+            ins: 0x06,
+            p1: 0x00,
+            p2: 0x00,
+            data: Buffer.alloc(1, 0x00, 'hex'),
+        };
+        // Response from Ledger
+        const response = await this.transport.send(apdu.cla, apdu.ins, apdu.p1, apdu.p2, apdu.data);
+        const result = {
+            majorVersion: '',
+            minorVersion: '',
+            patchVersion: '',
+        };
+        result.majorVersion = response[1];
+        result.minorVersion = response[2];
+        result.patchVersion = response[3];
+        return result;
     }
 
     /**
@@ -48,11 +85,11 @@ export default class Nem {
 
         // APDU fields configuration
         const apdu = {
-          cla: CLA_FIELD,
-          ins: GET_ADDRESS_INS_FIELD,
-          p1: display ? 0x01 : 0x00,
-          p2: curveMask | (chainCode ? 0x01 : 0x00),
-          data: Buffer.alloc(1 + bipPath.length * 4),
+            cla: CLA_FIELD,
+            ins: GET_ADDRESS_INS_FIELD,
+            p1: display ? 0x01 : 0x00,
+            p2: curveMask | (chainCode ? 0x01 : 0x00),
+            data: Buffer.alloc(1 + bipPath.length * 4),
         };
 
         apdu.data.writeInt8(bipPath.length, 0);
@@ -139,23 +176,5 @@ export default class Nem {
             publicKey: rawTxHex.slice(32, 96),
             path: path
         };
-    }
-
-    /**
-     * get the version of the NEM app installed on the hardware device
-     *
-     * @return an object with a version
-     * @example
-     * const result = await nem.getAppConfiguration();
-     *
-     * {
-     *   "version": "1.0.3"
-     * }
-     */
-    async getAppConfiguration() {
-        const response = await this.transport.send(0xe0, 0x06, 0x00, 0x00);
-        const result = {};
-        result.version = "" + response[1] + "." + response[2] + "." + response[3];
-        return result;
     }
 }

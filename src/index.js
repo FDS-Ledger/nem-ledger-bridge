@@ -31,6 +31,8 @@ app.post('/', async(req, res) => {
 
 async function solveRequest(req) {
     switch (req.requestType) {
+        case "getAppVersion":
+            return getAppVersion();
         case "getAddress":
             return getAccount(req.hdKeypath, req.network, req.label);
         case "signTransaction":
@@ -38,6 +40,23 @@ async function solveRequest(req) {
         default:
             throw "Can not recognize your request!!!"
     }
+}
+
+async function getAppVersion(){
+    const transport = await TransportNodeHid.open("");
+    const nemH = new NemH(transport);
+
+    return new Promise(async(resolve, reject) => {
+        nemH.getAppVersion()
+        .then(result => {
+            transport.close();
+            resolve(result);
+        })
+        .catch( err => {
+            transport.close();
+            reject(err);
+        })
+    })
 }
 
 async function getAccount(hdKeypath, network, label) {
